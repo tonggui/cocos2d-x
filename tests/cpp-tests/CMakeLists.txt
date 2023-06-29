@@ -1,4 +1,6 @@
 set(APP_NAME cpp-tests)
+project(${APP_NAME})
+message("====build cpp-tests start===========")
 
 if(WIN32)
   set(PLATFORM_SRC proj.win32/main.cpp)
@@ -13,6 +15,11 @@ elseif(MACOSX)
 elseif(LINUX)
   set(PLATFORM_SRC proj.linux/main.cpp)
   set(RES_PREFIX "/Resources")
+
+elseif(OHOS)
+  set(PLATFORM_SRC proj.ohos/entry/src/main/cpp/main.cpp)
+  set(RES_PREFIX "/Resources")
+
 else()
   message( FATAL_ERROR "Unsupported platform, CMake will exit" )
 endif()
@@ -217,9 +224,9 @@ if(LINUX)
     )
 else()
     set(EXTENDED_TESTS_SRC
-        Classes/ExtensionsTest/NetworkTest/HttpClientTest.cpp
-        Classes/ExtensionsTest/NetworkTest/SocketIOTest.cpp
-        Classes/ExtensionsTest/NetworkTest/WebSocketTest.cpp
+        # Classes/ExtensionsTest/NetworkTest/HttpClientTest.cpp
+        # Classes/ExtensionsTest/NetworkTest/SocketIOTest.cpp
+        # Classes/ExtensionsTest/NetworkTest/WebSocketTest.cpp
 
         Classes/UITest/CocoStudioGUITest/CocoStudioGUITest.cpp
         Classes/UITest/CocoStudioGUITest/CocosGUIScene.cpp
@@ -242,14 +249,101 @@ include_directories(
 )
 
 # add the executable
-add_executable(${APP_NAME}
-  ${TESTS_SRC}
-  ${EXTENDED_TESTS_SRC}
-)
+if(OHOS)
+    add_definitions("-DOpenHarmony")
+    add_definitions(-DCC_ENABLE_CHIPMUNK_INTEGRATION=1)
+    add_definitions("-DCOCOS2D_DEBUG=3")
+    add_compile_options(-DUSE_FILE32API
+            -Wno-absolute-value
+            -Wno-extra
+            -Wno-implicit-int-float-conversion
+            -Wno-overloaded-virtual
+            -Wno-unused-function
+            -Wno-unused-private-field
+            -Wno-unused-parameter
+            -Wno-reorder-ctor
+            -Wno-unsequenced
+            -Wno-extra
+            -Wno-c++11-narrowing
+            -Wno-expansion-to-defined
+            -Wno-unused-command-line-argument
+            )
+    include_directories(
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            Classes
+            # Classes/ExtensionsTest
+            ${COCOS2DX_ROOT_PATH}
+            ${COCOS2DX_ROOT_PATH}/external
+            ${COCOS2DX_ROOT_PATH}/external/chipmunk
+            ${COCOS2DX_ROOT_PATH}/external/chipmunk/include/chipmunk
+            ${COCOS2DX_ROOT_PATH}/external/curl/include/ohos
+            ${COCOS2DX_ROOT_PATH}/external/lib
+            ${COCOS2DX_ROOT_PATH}/external/Box2D
+            ${COCOS2DX_ROOT_PATH}/external/tiff
+            ${COCOS2DX_ROOT_PATH}/external/tiff/include/ohos
+            ${COCOS2DX_ROOT_PATH}/cocos
+            ${COCOS2DX_ROOT_PATH}/cocos/editor-support
+            ${COCOS2DX_ROOT_PATH}/extensions
+    )
 
-target_link_libraries(${APP_NAME}
-  cocos2d
-)
+    list(APPEND TESTS_SRC
+            ${EXTENDED_TESTS_SRC}
+            )
+    add_library(${PROJECT_NAME} SHARED ${TESTS_SRC})
+
+    find_library( # Sets the name of the path variable.
+            EGL-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            EGL )
+
+    find_library( # Sets the name of the path variable.
+            GLES-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            GLESv3 )
+
+    find_library( # Sets the name of the path variable.
+            hilog-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            hilog_ndk.z )
+
+    find_library( # Sets the name of the path variable.
+            libace-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            ace_ndk.z )
+
+    find_library( # Sets the name of the path variable.
+            libnapi-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            ace_napi.z )
+
+    find_library( # Sets the name of the path variable.
+            libuv-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            uv )
+
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${EGL-lib} ${GLES-lib} ${hilog-lib}
+            ${libace-lib} ${libnapi-lib} ${libuv-lib} cocos2d)
+
+    add_subdirectory(${COCOS2DX_ROOT_PATH} Cocos2d-X)
+    # target_link_libraries(${PROJECT_NAME} PUBLIC libace_napi.z.so extensions)
+    # add_subdirectory(${COCOS2DX_ROOT_PATH}/extensions)
+else(OHOS)
+    add_executable(${APP_NAME}
+      ${TESTS_SRC}
+      ${EXTENDED_TESTS_SRC}
+    )
+    target_link_libraries(${APP_NAME}
+      cocos2d
+    )
+endif(OHOS)
+
+# cocos_use_pkg(${APP_NAME} CURL)
 
 if(MACOSX OR APPLE)
   set_target_properties(${APP_NAME} PROPERTIES

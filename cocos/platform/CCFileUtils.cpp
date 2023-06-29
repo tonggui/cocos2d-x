@@ -1288,7 +1288,7 @@ bool FileUtils::renameFile(const std::string &path, const std::string &oldname, 
 
     if (0 != errorCode)
     {
-        CCLOGERROR("Fail to rename file %s to %s !Error code is %d", oldPath.c_str(), newPath.c_str(), errorCode);
+        CCLOGERROR("Fail to rename file %s to %s !Error code is %d sys errno is %d", oldPath.c_str(), newPath.c_str(), errorCode, errno);
         return false;
     }
     return true;
@@ -1336,6 +1336,20 @@ void FileUtils::setPopupNotify(bool notify)
 bool FileUtils::isPopupNotify()
 {
     return s_popupNotify;
+}
+
+std::string FileUtils::getFileExtension(const std::string& filePath) const
+{
+    std::string fileExtension;
+    size_t pos = filePath.find_last_of('.');
+    if (pos != std::string::npos)
+    {
+        fileExtension = filePath.substr(pos, filePath.length());
+
+        std::transform(fileExtension.begin(), fileExtension.end(), fileExtension.begin(), ::tolower);
+    }
+
+    return fileExtension;
 }
 
 NS_CC_END

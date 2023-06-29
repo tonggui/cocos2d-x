@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "entry_desc",
+      "value": "eTSXComponent"
+    },
+    {
+      "name": "MainAbility_label",
+      "value": "cpptest-35"
+    },
+    {
+      "name": "MainAbility_desc",
+      "value": "description"
+    }
+  ]
+}

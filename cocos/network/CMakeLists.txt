@@ -10,8 +10,8 @@ endif()
 set(COCOS_NETWORK_SRC
 
     network/HttpClient.cpp
-    network/SocketIO.cpp
-    network/WebSocket.cpp
+    # network/SocketIO.cpp
+    # network/WebSocket.cpp
 
 )
 

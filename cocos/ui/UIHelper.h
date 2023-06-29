@@ -82,6 +82,15 @@ public:
     static void doLayout(Node *rootNode);
 
     static void changeLayoutSystemActiveState(bool bActive);
+
+    /**
+     *@brief Convert a node's boundingBox rect into screen coordinates.
+     *
+     * @param node Any node pointer.
+     *
+     * @return A Rect in screen coordinates.
+    */
+    static Rect convertBoundingBoxToScreen(Node* node);
 };
 }
 

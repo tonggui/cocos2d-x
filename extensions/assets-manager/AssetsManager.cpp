@@ -22,6 +22,7 @@
  THE SOFTWARE.
  ****************************************************************************/
 #include "AssetsManager.h"
+#include "cocos2d.h"
 
 #include <curl/curl.h>
 #include <curl/easy.h>
@@ -35,6 +36,11 @@
 #include <errno.h>
 #include <dirent.h>
 #endif
+// android doesn't have ftw.h
+#if (CC_TARGET_PLATFORM != CC_PLATFORM_ANDROID)
+#include <ftw.h>
+#endif
+
 
 #include "base/CCDirector.h"
 #include "base/CCScheduler.h"
@@ -83,6 +89,19 @@ struct ProgressMessage
 };
 
 // Implementation of AssetsManager
+
+namespace
+{
+#if (CC_TARGET_PLATFORM != CC_PLATFORM_ANDROID)
+    int unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
+    {
+        int rv = remove(fpath);
+        if (rv)
+            perror(fpath);
+        return rv;
+    }
+#endif
+}
 
 AssetsManager::AssetsManager(const char* packageUrl/* =nullptr */, const char* versionFileUrl/* =nullptr */, const char* storagePath/* =nullptr */)
 :  _storagePath(storagePath)
@@ -139,26 +158,31 @@ static size_t getVersionCode(void *ptr, size_t size, size_t nmemb, void *userdat
 {
     string *version = (string*)userdata;
     version->append((char*)ptr, size * nmemb);
-    
+
     return (size * nmemb);
 }
 
 bool AssetsManager::checkUpdate()
 {
     if (_versionFileUrl.size() == 0) return false;
-    
+
     _curl = curl_easy_init();
     if (! _curl)
     {
         CCLOG("can not init curl");
         return false;
     }
-    
+
     // Clear _version before assign new value.
     _version.clear();
-    
+
     CURLcode res;
-    curl_easy_setopt(_curl, CURLOPT_URL, _versionFileUrl.c_str());
+
+//    // tuyoo https workaround start
+//    curl_easy_setopt(_curl, CURLOPT_URL, cocos2d::utils::getIsUseHttp(_versionFileUrl) ? _versionFileUrl.c_str() : cocos2d::utils::transUrlToHttps(_versionFileUrl).c_str());
+//    //curl_easy_setopt(_curl, CURLOPT_URL, _versionFileUrl.c_str());
+//    // tuyoo https workaround end
+
     curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, getVersionCode);
     curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &_version);
@@ -168,7 +192,12 @@ bool AssetsManager::checkUpdate()
     curl_easy_setopt(_curl, CURLOPT_LOW_SPEED_TIME, LOW_SPEED_TIME);
     curl_easy_setopt(_curl, CURLOPT_FOLLOWLOCATION, 1 );
     res = curl_easy_perform(_curl);
-    
+    // tuyoo https workaround start
+    // for these wild https certifications
+    curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    // tuyoo https workaround end
+
     if (res != 0)
     {
         Director::getInstance()->getScheduler()->performFunctionInCocosThread([&, this]{
@@ -179,7 +208,7 @@ bool AssetsManager::checkUpdate()
         curl_easy_cleanup(_curl);
         return false;
     }
-    
+
     string recordedVersion = UserDefault::getInstance()->getStringForKey(keyOfVersion().c_str());
     if (recordedVersion == _version)
     {
@@ -192,9 +221,9 @@ bool AssetsManager::checkUpdate()
         setSearchPath();
         return false;
     }
-    
+
     CCLOG("there is a new version: %s", _version.c_str());
-    
+
     return true;
 }
 
@@ -205,14 +234,14 @@ void AssetsManager::downloadAndUncompress()
         if (_downloadedVersion != _version)
         {
             if (! downLoad()) break;
-            
+
             Director::getInstance()->getScheduler()->performFunctionInCocosThread([&, this]{
                 UserDefault::getInstance()->setStringForKey(this->keyOfDownloadedVersion().c_str(),
                                                             this->_version.c_str());
                 UserDefault::getInstance()->flush();
             });
         }
-        
+
         // Uncompress zip file.
         if (! uncompress())
         {
@@ -224,40 +253,40 @@ void AssetsManager::downloadAndUncompress()
             });
             break;
         }
-        
+
         Director::getInstance()->getScheduler()->performFunctionInCocosThread([&, this] {
-            
+
             // Record new version code.
             UserDefault::getInstance()->setStringForKey(this->keyOfVersion().c_str(), this->_version.c_str());
-            
+
             // Unrecord downloaded version code.
             UserDefault::getInstance()->setStringForKey(this->keyOfDownloadedVersion().c_str(), "");
             UserDefault::getInstance()->flush();
-            
+
             // Set resource search path.
             this->setSearchPath();
-            
+
             // Delete unloaded zip file.
             string zipfileName = this->_storagePath + TEMP_PACKAGE_FILE_NAME;
             if (remove(zipfileName.c_str()) != 0)
             {
                 CCLOG("can not remove downloaded zip file %s", zipfileName.c_str());
             }
-            
+
             if (this->_delegate) this->_delegate->onSuccess();
         });
-       
+
     } while (0);
-    
+
     _isDownloading = false;
 }
 
 void AssetsManager::update()
 {
     if (_isDownloading) return;
-    
+
     _isDownloading = true;
-    
+
     // 1. Urls of package and version should be valid;
     // 2. Package should be a zip file.
     if (_versionFileUrl.size() == 0 ||
@@ -268,17 +297,17 @@ void AssetsManager::update()
         _isDownloading = false;
         return;
     }
-    
+
     // Check if there is a new version.
     if (! checkUpdate())
     {
         _isDownloading = false;
         return;
     }
-    
+
     // Is package already downloaded?
     _downloadedVersion = UserDefault::getInstance()->getStringForKey(keyOfDownloadedVersion().c_str());
-    
+
     auto t = std::thread(&AssetsManager::downloadAndUncompress, this);
     t.detach();
 }
@@ -293,7 +322,7 @@ bool AssetsManager::uncompress()
         CCLOG("can not open downloaded zip file %s", outFileName.c_str());
         return false;
     }
-    
+
     // Get info about the zip file
     unz_global_info global_info;
     if (unzGetGlobalInfo(zipfile, &global_info) != UNZ_OK)
@@ -302,12 +331,12 @@ bool AssetsManager::uncompress()
         unzClose(zipfile);
         return false;
     }
-    
+
     // Buffer to hold data read from the zip file
     char readBuffer[BUFFER_SIZE];
-    
+
     CCLOG("start uncompressing");
-    
+
     // Loop to extract all files.
     uLong i;
     for (i = 0; i < global_info.number_entry; ++i)
@@ -328,9 +357,9 @@ bool AssetsManager::uncompress()
             unzClose(zipfile);
             return false;
         }
-        
+
         const string fullPath = _storagePath + fileName;
-        
+
         // Check if this entry is a directory or a file.
         const size_t filenameLength = strlen(fileName);
         if (fileName[filenameLength-1] == '/')
@@ -350,17 +379,17 @@ bool AssetsManager::uncompress()
             //So we need to test whether the file directory exists when uncompressing file entry
             //, if does not exist then create directory
             const string fileNameStr(fileName);
-            
+
             size_t startIndex=0;
-            
+
             size_t index=fileNameStr.find("/",startIndex);
-            
+
             while(index != std::string::npos)
             {
                 const string dir=_storagePath+fileNameStr.substr(0,index);
-                
+
                 FILE *out = fopen(dir.c_str(), "r");
-                
+
                 if(!out)
                 {
                     if (!createDirectory(dir.c_str()))
@@ -378,17 +407,17 @@ bool AssetsManager::uncompress()
                 {
                     fclose(out);
                 }
-                
+
                 startIndex=index+1;
-                
+
                 index=fileNameStr.find("/",startIndex);
-                
+
             }
-            
-            
-            
+
+
+
             // Entry is a file, so extract it.
-            
+
             // Open current file.
             if (unzOpenCurrentFile(zipfile) != UNZ_OK)
             {
@@ -396,7 +425,7 @@ bool AssetsManager::uncompress()
                 unzClose(zipfile);
                 return false;
             }
-            
+
             // Create a file to store current file.
             FILE *out = fopen(fullPath.c_str(), "wb");
             if (! out)
@@ -406,7 +435,7 @@ bool AssetsManager::uncompress()
                 unzClose(zipfile);
                 return false;
             }
-            
+
             // Write current file content to destinate file.
             int error = UNZ_OK;
             do
@@ -419,18 +448,18 @@ bool AssetsManager::uncompress()
                     unzClose(zipfile);
                     return false;
                 }
-                
+
                 if (error > 0)
                 {
                     fwrite(readBuffer, error, 1, out);
                 }
             } while(error > 0);
-            
+
             fclose(out);
         }
-        
+
         unzCloseCurrentFile(zipfile);
-        
+
         // Goto next entry listed in the zip file.
         if ((i+1) < global_info.number_entry)
         {
@@ -442,10 +471,10 @@ bool AssetsManager::uncompress()
             }
         }
     }
-    
+
     CCLOG("end uncompressing");
     unzClose(zipfile);
-    
+
     return true;
 }
 
@@ -497,7 +526,7 @@ int assetsManagerProgressFunc(void *ptr, double totalToDownload, double nowDownl
 {
     static int percent = 0;
     int tmp = (int)(nowDownloaded / totalToDownload * 100);
-    
+
     if (percent != tmp)
     {
         percent = tmp;
@@ -506,10 +535,10 @@ int assetsManagerProgressFunc(void *ptr, double totalToDownload, double nowDownl
             if (manager->_delegate)
                 manager->_delegate->onProgress(percent);
         });
-        
+
         CCLOG("downloading... %d%%", percent);
     }
-    
+
     return 0;
 }
 
@@ -527,10 +556,15 @@ bool AssetsManager::downLoad()
         CCLOG("can not create file %s", outFileName.c_str());
         return false;
     }
-    
+
     // Download pacakge
     CURLcode res;
-    curl_easy_setopt(_curl, CURLOPT_URL, _packageUrl.c_str());
+
+    // tuyoo https workaround start
+//    curl_easy_setopt(_curl, CURLOPT_URL, cocos2d::utils::getIsUseHttp(_packageUrl) ? _packageUrl.c_str() : cocos2d::utils::transUrlToHttps(_packageUrl).c_str());
+//    //curl_easy_setopt(_curl, CURLOPT_URL, _packageUrl.c_str());
+    // tuyoo https workaround end
+
     curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, downLoadPackage);
     curl_easy_setopt(_curl, CURLOPT_WRITEDATA, fp);
     curl_easy_setopt(_curl, CURLOPT_NOPROGRESS, false);
@@ -540,6 +574,11 @@ bool AssetsManager::downLoad()
     curl_easy_setopt(_curl, CURLOPT_LOW_SPEED_LIMIT, LOW_SPEED_LIMIT);
     curl_easy_setopt(_curl, CURLOPT_LOW_SPEED_TIME, LOW_SPEED_TIME);
     curl_easy_setopt(_curl, CURLOPT_FOLLOWLOCATION, 1 );
+    // tuyoo https workaround start
+    // for these wild https certifications
+    curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    // tuyoo https workaround end
 
     res = curl_easy_perform(_curl);
     curl_easy_cleanup(_curl);
@@ -553,9 +592,9 @@ bool AssetsManager::downLoad()
         fclose(fp);
         return false;
     }
-    
+
     CCLOG("succeed downloading package %s", _packageUrl.c_str());
-    
+
     fclose(fp);
     return true;
 }
@@ -618,7 +657,7 @@ unsigned int AssetsManager::getConnectionTimeout()
 
 AssetsManager* AssetsManager::create(const char* packageUrl, const char* versionFileUrl, const char* storagePath, ErrorCallback errorCallback, ProgressCallback progressCallback, SuccessCallback successCallback )
 {
-    class DelegateProtocolImpl : public AssetsManagerDelegateProtocol 
+    class DelegateProtocolImpl : public AssetsManagerDelegateProtocol
     {
     public :
         DelegateProtocolImpl(ErrorCallback aErrorCallback, ProgressCallback aProgressCallback, SuccessCallback aSuccessCallback)
@@ -667,7 +706,7 @@ void AssetsManager::destroyStoragePath()
 {
     // Delete recorded version codes.
     deleteVersion();
-    
+
     // Remove downloaded files
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_WINRT) || (CC_TARGET_PLATFORM == CC_PLATFORM_WP8)
     FileUtils::getInstance()->removeDirectory(_storagePath.c_str());
@@ -676,11 +715,20 @@ void AssetsManager::destroyStoragePath()
     // Path may include space.
     command += "\"" + _storagePath + "\"";
     system(command.c_str());
+
+#else
+
+    #if (CC_TARGET_PLATFORM != CC_PLATFORM_ANDROID)
+       if (nftw(_storagePath.c_str(), unlink_cb, 64, FTW_DEPTH | FTW_PHYS) == -1)
+           return;
+       else
+           return;
 #else
     string command = "rm -r ";
     // Path may include space.
     command += "\"" + _storagePath + "\"";
-    system(command.c_str());    
+    system(command.c_str());
+    #endif // (CC_TARGET_PLATFORM != CC_PLATFORM_ANDROID)
 #endif
 }
 

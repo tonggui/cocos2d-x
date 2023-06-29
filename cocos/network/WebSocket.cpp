@@ -391,9 +391,9 @@ int WebSocket::onSubThreadLoop()
 {
     if (_readyState == State::CLOSED || _readyState == State::CLOSING)
     {
-        libwebsocket_context_destroy(_wsContext);
-        // return 1 to exit the loop.
-        return 1;
+      libwebsocket_context_destroy(_wsContext);
+      // return 1 to exit the loop.
+      return 1;
     }
     
     if (_wsContext && _readyState != State::CLOSED && _readyState != State::CLOSING)

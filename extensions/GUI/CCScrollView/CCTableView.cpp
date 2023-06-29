@@ -161,6 +161,11 @@ void TableView::updateCellAtIndex(ssize_t idx)
         this->_moveCellOutOfSight(cell);
     }
     cell = _dataSource->tableCellAtIndex(this, idx);
+    // sometime, cell is nullptr
+    if (NULL == cell) {
+        return;
+    }
+
     this->_setIndexForCell(idx, cell);
     this->_addCellIfNecessary(cell);
 }

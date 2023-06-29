@@ -34,6 +34,7 @@
 #include "CCInvocation.h"
 #include "base/CCEventDispatcher.h"
 #include "base/CCEventListenerTouch.h"
+#include "base/CCEventListenerMouse.h"
 
 NS_CC_EXT_BEGIN
 

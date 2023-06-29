@@ -22,9 +22,10 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-#include "platform/CCPlatformConfig.h"
-
-#if CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID || CC_TARGET_PLATFORM == CC_PLATFORM_IOS || CC_TARGET_PLATFORM == CC_PLATFORM_MAC || CC_TARGET_PLATFORM == CC_PLATFORM_WIN32
+#include "platform/CCPlatformMacros.h"
+#include "platform/CCFileUtils.h"
+#define   PRINT_MACRO_HELPER(x)   #x
+#define   PRINT_MACRO(x)   #x"=" PRINT_MACRO_HELPER(x)
 
 #include "audio/include/AudioEngine.h"
 #include "platform/CCFileUtils.h"
@@ -32,6 +33,8 @@
 
 #if CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID
 #include "android/AudioEngine-inl.h"
+#elif CC_TARGET_PLATFORM == CC_PLATFORM_OHOS
+#include "ohos/AudioEngine-inl.h"
 #elif CC_TARGET_PLATFORM == CC_PLATFORM_IOS || CC_TARGET_PLATFORM == CC_PLATFORM_MAC
 #include "apple/AudioEngine-inl.h"
 #elif CC_TARGET_PLATFORM == CC_PLATFORM_WIN32
@@ -61,6 +64,8 @@ AudioEngineImpl* AudioEngine::_audioEngineImpl = nullptr;
 
 void AudioEngine::end()
 {
+    stopAll();
+
     delete _audioEngineImpl;
     _audioEngineImpl = nullptr;
 
@@ -225,6 +230,10 @@ void AudioEngine::resumeAll()
 
 void AudioEngine::stop(int audioID)
 {
+    if(!_audioEngineImpl){
+        return;
+    }
+
     auto it = _audioIDInfoMap.find(audioID);
     if (it != _audioIDInfoMap.end()){
         _audioEngineImpl->stop(audioID);
@@ -265,8 +274,8 @@ void AudioEngine::stopAll()
 void AudioEngine::uncache(const std::string &filePath)
 {
     if(_audioPathIDMap.find(filePath) != _audioPathIDMap.end()){
-        auto itEnd = _audioPathIDMap[filePath].end();
-        for (auto it = _audioPathIDMap[filePath].begin() ; it != itEnd; ++it) {
+        auto lst =  _audioPathIDMap[filePath];
+        for (auto it = lst.begin() ; it != lst.end(); ++it) {
             auto audioID = *it;
             _audioEngineImpl->stop(audioID);
             
@@ -413,4 +422,18 @@ AudioProfile* AudioEngine::getProfile(const std::string &name)
     }
 }
 
-#endif
+void AudioEngine::preload(const std::string &filePath, std::function<void(bool isSuccess)> callback) {
+
+    lazyInit();
+
+    if (_audioEngineImpl) {
+        if (!FileUtils::getInstance()->isFileExist(filePath)) {
+            if (callback) {
+                callback(false);
+            }
+            return;
+        }
+
+        _audioEngineImpl->preload(filePath, callback);
+    }
+}

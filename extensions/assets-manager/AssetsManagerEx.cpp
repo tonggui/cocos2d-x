@@ -564,6 +564,11 @@ void AssetsManagerEx::startUpdate()
     {
         _tempManifest->genResumeAssetsList(&_downloadUnits);
         
+        for (auto unit : _downloadUnits)
+        {
+            _fileUtils->createDirectory(basename(unit.second.storagePath));
+        }
+
         _totalWaitToDownload = _totalToDownload = (int)_downloadUnits.size();
         _downloader->batchDownloadAsync(_downloadUnits, BATCH_UPDATE_ID);
         

@@ -26,6 +26,9 @@
 # this CMakeLists is to generate libcocos2d.a
 
 cmake_minimum_required(VERSION 2.8)
+project(cocos2d)
+
+message("====build cocos2d start===========")
 
 if(WINDOWS)
   ADD_DEFINITIONS(-DUNICODE -D_UNICODE)
@@ -60,7 +63,7 @@ include(editor-support/spine/CMakeLists.txt)
 set(COCOS_EDITOR_SUPPORT_SRC ${COCOS_EDITOR_SUPPORT_SRC} ${COCOS_SPINE_SRC})
 endif(BUILD_EDITOR_SPINE)
 
-include(../extensions/CMakeLists.txt)
+include(${COCOS2DX_ROOT_PATH}/extensions/CMakeLists.txt)
 
 set(COCOS_SRC cocos2d.cpp
     ${COCOS_2D_SRC}
@@ -78,26 +81,25 @@ set(COCOS_SRC cocos2d.cpp
     ${COCOS_EXTENSIONS_SRC}
     )
 
+  message("= build cocos ==CMAKE_CURRENT_SOURCE_DIR is =${CMAKE_CURRENT_SOURCE_DIR}====")
   #todo: provide prebuild versions of the xx libs for all platforms
-  include_directories(
-    ../external/xxhash
-    ../external/xxtea)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/xxtea)
 
-
-add_library(cocos2d ${COCOS_SRC})
+add_library(${PROJECT_NAME} ${COCOS_SRC})
 
 set(PLATFORM_SPECIFIC_LIBS)
 if(WINDOWS)
   foreach(_pkg OPENGL GLEW GLFW3 VORBIS MPG123 OPENAL)
-    cocos_use_pkg(cocos2d ${_pkg})
+    cocos_use_pkg(${PROJECT_NAME} ${_pkg})
   endforeach()
   list(APPEND PLATFORM_SPECIFIC_LIBS ws2_32 winmm)
 elseif(LINUX)
   foreach(_pkg OPENGL GLEW GLFW3 FMODEX FONTCONFIG THREADS)
-    cocos_use_pkg(cocos2d ${_pkg})
+    cocos_use_pkg(${PROJECT_NAME} ${_pkg})
   endforeach()
+  list(APPEND PLATFORM_SPECIFIC_LIBS ssl crypto)
 elseif(MACOSX OR APPLE)
-  cocos_use_pkg(cocos2d GLFW3)
+  cocos_use_pkg(${PROJECT_NAME} GLFW3)
 
  INCLUDE_DIRECTORIES ( /System/Library/Frameworks )
 
@@ -123,32 +125,96 @@ elseif(MACOSX OR APPLE)
 
 elseif(ANDROID)
   set(PLATFORM_SPECIFIC_LIBS GLESv2 log android)
+elseif(OHOS)
+    find_library( # Sets the name of the path variable.
+            Drawing-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            native_drawing )
+    find_library( # Sets the name of the path variable.
+            libace-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            ace_ndk.z )
+    find_library( # Sets the name of the path variable.
+            libnapi-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            ace_napi.z )
+    find_library( # Sets the name of the path variable.
+            libuv-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            uv )
+    find_library( # Sets the name of the path variable.
+            GLES-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            GLESv3 )
+    find_library( # Sets the name of the path variable.
+            rawfile-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            rawfile.z )
+    find_library( # Sets the name of the path variable.
+            EGL-lib
+            # Specifies the name of the NDK library that
+            # you want CMake to locate.
+            EGL )
+    set(PLATFORM_SPECIFIC_LIBS ${Drawing-lib} ${libace-lib} ${libnapi-lib} ${libuv-lib} ${GLES-lib}  ${rawfile-lib} ${EGL-lib}  EGL OpenSLES libc++.a)
 else()
   message( FATAL_ERROR "Unsupported platform, CMake will exit" )
 endif()
 
-foreach(pkg ZLIB MINIZIP JPEG PNG TIFF TinyXML2 FREETYPE WEBSOCKETS CURL FLATBUFFERS)
-  cocos_use_pkg(cocos2d ${pkg})
+set(COCOS2DX_HEADER_PUBLIC
+  ${CLASSES_PATH}
+  ${COCOS2DX_ROOT_PATH}/cocos
+  # ${COCOS2DX_ROOT_PATH}/cocos/cocoa
+  # ${COCOS2DX_ROOT_PATH}/cocos/include
+  ${COCOS2DX_ROOT_PATH}/cocos/math
+  ${COCOS2DX_ROOT_PATH}/cocos/platform
+  ${COCOS2DX_ROOT_PATH}/cocos/platform/ohos/napi/modules
+  ${COCOS2DX_ROOT_PATH}/cocos/platform/ohos
+  ${COCOS2DX_ROOT_PATH}/cocos/platform/ohos/napi/common
+  ${COCOS2DX_ROOT_PATH}/cocos/platform/ohos/napi
+  ${COCOS2DX_ROOT_PATH}/cocos/platform/ohos/napi/render
+  ${COCOS2DX_ROOT_PATH}/external/opengles/api
+  )
+target_link_directories(${PROJECT_NAME} PUBLIC ../external/lib)
+target_include_directories(${PROJECT_NAME} PUBLIC ${COCOS2DX_HEADER_PUBLIC})
+target_compile_definitions(${PROJECT_NAME} PUBLIC -DUSE_FILE32API -DOpenHarmony)
+target_compile_options(${PROJECT_NAME} PUBLIC -Wno-psabi)
+target_link_libraries(${PROJECT_NAME} ${PLATFORM_SPECIFIC_LIBS} ${glfw_other_linker_flags})
+
+foreach(pkg ZLIB MINIZIP JPEG PNG TIFF TinyXML2 FREETYPE WEBSOCKETS OPENSSL CURL FLATBUFFERS XXHASH)
+  cocos_use_pkg(${PROJECT_NAME} ${pkg})
 endforeach()
 
-target_link_libraries(cocos2d xxhash ${PLATFORM_SPECIFIC_LIBS})
+if(OHOS)
+  target_link_libraries(${PROJECT_NAME}
+    # ext_cpufeatures  TBD need fixed?
+    ext_pvmp3dec
+    ext_tremolo
+    )
+endif(OHOS)
+
 
 if(USE_WEBP)
   add_definitions(-DCC_USE_WEBP=1)
-  cocos_use_pkg(cocos2d WEBP)
+  cocos_use_pkg(${PROJECT_NAME} WEBP)
 else()
   add_definitions(-DCC_USE_WEBP=0)
 endif()
 
 if(USE_CHIPMUNK)
-  cocos_use_pkg(cocos2d CHIPMUNK)
+  cocos_use_pkg(${PROJECT_NAME} CHIPMUNK)
 endif()
 
 if(USE_BOX2D)
-  cocos_use_pkg(cocos2d Box2D)
+  cocos_use_pkg(${PROJECT_NAME} Box2D)
 endif()
 
-set_target_properties(cocos2d
+set_target_properties(${PROJECT_NAME}
     PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"

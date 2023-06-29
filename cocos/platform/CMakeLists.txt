@@ -58,6 +58,52 @@ set(COCOS_PLATFORM_SPECIFIC_SRC
   platform/android/jni/TouchesJni.cpp
 )
 
+elseif(OHOS)
+
+include_directories(
+        platform/ohos
+        platform/ohos/napi
+        platform/ohos/napi/modules
+        platform/ohos/napi/common
+        platform/ohos/napi/render
+)
+
+set(COCOS_PLATFORM_SPECIFIC_SRC
+        platform/ohos/CCApplication-ohos.cpp
+        platform/ohos/CCCommon-ohos.cpp
+        platform/ohos/CCDevice-ohos.cpp
+        platform/ohos/CCFileUtils-ohos.cpp
+        platform/ohos/CCGLViewImpl-ohos.cpp
+        platform/ohos/CCTextBitmap.cpp
+        platform/ohos/CCArkJsDialog.cpp
+        platform/ohos/CCArkDisplay.cpp
+        # platform/ohos/CCArkEditBox.cpp
+        platform/ohos/CCArkJsLanguage.cpp
+        platform/ohos/CCArkJsWant.cpp
+
+        platform/ohos/JsAudioEngine.cpp
+
+        platform/ohos/napi/plugin_manager.cpp
+        platform/ohos/napi/WorkerMessageQueue.cpp
+        platform/ohos/napi/modules/Cocos2dxHelper.cpp
+        platform/ohos/napi/modules/CocosPlayClient.cpp
+        platform/ohos/napi/modules/AcceleratorCocos2dx.cpp
+        platform/ohos/napi/modules/WebViewNapi.cpp
+        platform/ohos/CCArkWebView.cpp
+        platform/ohos/CCArkJsVideoPlay.cpp
+        # platform/ohos/napi/modules/EditBoxNapi.cpp
+#        platform/ohos/napi/modules/DPIJni.cpp
+#        platform/ohos/napi/modules/IMEJni.cpp
+#        platform/ohos/napi/modules/Java_org_cocos2dx_lib_Cocos2dxBitmap.cpp
+#        platform/ohos/napi/modules/Java_org_cocos2dx_lib_Cocos2dxHelper.cpp                                 # will add
+        platform/ohos/napi/modules/TouchesNapi.cpp
+        platform/ohos/napi/modules/RawFileUtils.cpp
+        # platform/ohos/napi/modules/Java_org_cocos2dx_lib_Cocos2dxAccelerometer.cpp  # will add
+        # platform/ohos/napi/modules/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp       # will add
+        # platform/ohos/napi/modules/JniHelper.cpp
+        platform/ohos/napi/render/egl_core.cpp
+        platform/ohos/napi/render/plugin_render.cpp
+)
 endif()
 
 #leave andatory external stuff here also

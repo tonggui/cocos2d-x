@@ -321,7 +321,7 @@ public:
      *  @return true if the file exists, otherwise it will return false.
      */
     virtual bool isFileExist(const std::string& filename) const;
-    
+    virtual std::string getFileExtension(const std::string& filePath) const;
     /**
      *  Checks whether the path is an absolute path.
      *

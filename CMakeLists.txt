@@ -30,16 +30,17 @@ cmake_minimum_required(VERSION 2.8)
 cmake_policy(SET CMP0017 NEW)
 
 project (Cocos2d-X)
+message("====build Cocos2d-X start===========")
 
 # The version number
 set(COCOS2D_X_VERSION 3.3.0-rc1)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 include(CocosBuildHelpers)
 
 message(${BUILDING_STRING})
 
-set(USE_WEBP_DEFAULT ON)
+set(USE_WEBP_DEFAULT OFF)
 if(WINRT OR WP8)
   set(USE_WEBP_DEFAULT OFF)
 endif()
@@ -47,6 +48,16 @@ endif()
 set(USE_PREBUILT_LIBS_DEFAULT ON)
 if(MINGW)
   set(USE_PREBUILT_LIBS_DEFAULT OFF)
+endif()
+
+set(BUILD_CPP_TESTS_DEFAULT OFF)
+set(BUILD_LUA_LIBS_DEFAULT OFF)
+set(BUILD_LUA_TESTS_DEFAULT OFF)
+# TODO: fix test samples for MSVC
+if(MSVC)
+  set(BUILD_CPP_TESTS_DEFAULT OFF)
+  set(BUILD_LUA_LIBS_DEFAULT OFF)
+  set(BUILD_LUA_TESTS_DEFAULT OFF)
 endif()
 
 option(USE_CHIPMUNK "Use chipmunk for physics library" ON)
@@ -58,14 +69,14 @@ option(BUILD_EXTENSIONS "Build extension library" ON)
 option(BUILD_EDITOR_SPINE "Build editor support for spine" ON)
 option(BUILD_EDITOR_COCOSTUDIO "Build editor support for cocostudio" ON)
 option(BUILD_EDITOR_COCOSBUILDER "Build editor support for cocosbuilder" ON)
-option(BUILD_CPP_TESTS "Build TestCpp samples" ON)
-option(BUILD_LUA_LIBS "Build lua libraries" ON)
-option(BUILD_LUA_TESTS "Build TestLua samples" ON)
+option(BUILD_CPP_TESTS "Build TestCpp samples" ${BUILD_CPP_TESTS_DEFAULT})
+option(BUILD_LUA_LIBS "Build lua libraries" ${BUILD_LUA_LIBS_DEFAULT})
+option(BUILD_LUA_TESTS "Build TestLua samples" ${BUILD_LUA_TESTS_DEFAULT})
 option(USE_PREBUILT_LIBS "Use prebuilt libraries in external directory" ${USE_PREBUILT_LIBS_DEFAULT})
 
-if(USE_PREBUILT_LIBS AND MINGW)
-  message(FATAL_ERROR "Prebuilt windows libs can't be used with mingw, please use packages.")
-endif()
+#if(USE_PREBUILT_LIBS AND MINGW)
+#  message(FATAL_ERROR "Prebuilt windows libs can't be used with mingw, please use packages.")
+#endif()
 
 if(DEBUG_MODE)
   set(CMAKE_BUILD_TYPE DEBUG)
@@ -73,7 +84,7 @@ else(DEBUG_MODE)
   set(CMAKE_BUILD_TYPE RELEASE)
 endif(DEBUG_MODE)
 
-set(CMAKE_C_FLAGS_DEBUG "-DCOCOS2D_DEBUG=1")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DCOCOS2D_DEBUG=1")
 set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
 
 # Compiler options
@@ -91,7 +102,7 @@ else()
   endif()
 endif(MSVC)
 
-set(COCOS_EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
+set(COCOS_EXTERNAL_DIR ${CMAKE_CURRENT_LIST_DIR}/external)
 
 # Some macro definitions
 if(WINDOWS)
@@ -114,6 +125,9 @@ elseif(LINUX)
 elseif(ANDROID)
   ADD_DEFINITIONS (-DUSE_FILE32API)
   set(PLATFORM_FOLDER android)
+elseif(OHOS)
+  ADD_DEFINITIONS (-DUSE_FILE32API)
+  set(PLATFORM_FOLDER ohos)
 else()
   message( FATAL_ERROR "Unsupported platform, CMake will exit" )
 endif()
@@ -180,6 +194,13 @@ if(LINUX OR MACOSX OR WINDOWS)
 endif(LINUX OR MACOSX OR WINDOWS)
 
 # Freetype required on all platforms
+if(OHOS)
+  set(FREETYPE_INCLUDE_DIR_ft2build ${CMAKE_CURRENT_SOURCE_DIR}/external/freetype2/include/ohos)
+  set(FREETYPE_INCLUDE_DIR_freetype2 ${CMAKE_CURRENT_SOURCE_DIR}/external/freetype2/include/ohos/freetype2)
+  set(FREETYPE_LIBRARY
+          ${CMAKE_CURRENT_SOURCE_DIR}/external/freetype2/prebuilt/ohos/libfreetype.a
+          )
+endif()
 cocos_find_package(Freetype FREETYPE REQUIRED)
 
 # WebP required if used
@@ -189,6 +210,10 @@ endif(USE_WEBP)
 
 # Chipmunk
 if(USE_CHIPMUNK)
+  if(OHOS)
+    set(CHIPMUNK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/chipmunk/include/chipmunk)
+    set(CHIPMUNK_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/external/chipmunk/prebuilt/ohos/libchipmunk.a)
+  endif()
   cocos_find_package(Chipmunk CHIPMUNK REQUIRED)
   add_definitions(-DCC_ENABLE_CHIPMUNK_INTEGRATION=1)
   if(IOS OR MACOSX)
@@ -201,15 +226,16 @@ endif(USE_CHIPMUNK)
 
 # Box2d (not prebuilded, exists as source)
 if(USE_BOX2D)
-  if(USE_PREBUILT_LIBS)
+  if(NOT USE_PREBUILT_LIBS)
     add_subdirectory(external/Box2D)
+  endif()
+  if(OHOS)
     set(Box2D_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/external/box2d/include)
     set(Box2D_LIBRARIES box2d)
-  else()
-    find_package(Box2D REQUIRED CONFIG)
-    # actually Box2D in next line is not a library, it is target exported from Box2DConfig.cmake
-    set(Box2D_LIBRARIES Box2D)
   endif()
+  find_package(Box2D REQUIRED CONFIG)
+  # actually Box2D in next line is not a library, it is target exported from Box2DConfig.cmake
+  set(Box2D_LIBRARIES Box2D)
   message(STATUS "Box2D include dirs: ${Box2D_INCLUDE_DIRS}")
   add_definitions(-DCC_ENABLE_BOX2D_INTEGRATION=1)
 else()
@@ -217,14 +243,24 @@ else()
 endif(USE_BOX2D)
 
 # Tinyxml2 (not prebuilded, exists as source)
-if(USE_PREBUILT_LIBS)
-  add_subdirectory(external/tinyxml2)
-  set(TinyXML2_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/external/tinyxml2)
-  set(TinyXML2_LIBRARIES tinyxml2)
-else()
-  cocos_find_package(TinyXML2 TinyXML2 REQUIRED)
+add_subdirectory(external/tinyxml2)
+if(OHOS)
+  set(TinyXML2_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/tinyxml2)
+  set(TinyXML2_LIBRARY tinyxml2)
 endif()
-message(STATUS "TinyXML2 include dirs: ${TinyXML2_INCLUDE_DIRS}")
+  cocos_find_package(TinyXML2 TinyXML2 REQUIRED)
+  message(STATUS "TinyXML2 include dirs: ${TinyXML2_INCLUDE_DIRS}")
+
+if(NOT USE_PREBUILT_LIBS)
+  # add_subdirectory(external/jpeg)
+endif()
+
+if(OHOS)
+set(JPEG_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/jpeg/include/ohos)
+set(JPEG_LIBRARY
+${CMAKE_CURRENT_SOURCE_DIR}/external/jpeg/prebuilt/ohos/libjpeg.a
+)
+endif()
 
 # libjpeg
 cocos_find_package(JPEG JPEG REQUIRED)
@@ -235,25 +271,63 @@ cocos_find_package(ZLIB ZLIB REQUIRED)
 # dists have packages from zlib, thats very old for us.
 # moreover our embedded version modified to quick provide
 # functionality needed by cocos.
-if(USE_PREBUILT_LIBS OR NOT MINGW)
+#if(USE_PREBUILT_LIBS OR NOT MINGW)
+include_directories(${ZLIB_INCLUDE_DIRS})
+if(OHOS)
   add_subdirectory(external/unzip)
-  set(MINIZIP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/external/unzip)
-  set(MINIZIP_LIBRARIES unzip)
-  message(STATUS "MINIZIP include dirs: ${MINIZIP_INCLUDE_DIRS}")
-else()
-  cocos_find_package(MINIZIP MINIZIP REQUIRED)
-  # double check that we have needed functions
-  include(CheckLibraryExists)
-  check_library_exists(${MINIZIP_LIBRARIES} "unzGoToFirstFile2" "" MINIZIP_HAS_GOTOFIRSTFILE2)
-  if(NOT MINIZIP_HAS_GOTOFIRSTFILE2)
-    message(FATAL_ERROR "Minizip library on you system very old. Please use recent version from https://github.com/nmoinvaz/minizip or enable USE_PREBUILT_LIBS")
-  endif()
-  add_definitions(-DMINIZIP_FROM_SYSTEM)
+  set(MINIZIP_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/unzip ${ZLIB_INCLUDE_DIRS})
+  set(MINIZIP_LIBRARY unzip ${ZLIB_LIBRARIES})
+endif()
+cocos_find_package(MINIZIP MINIZIP REQUIRED)
+
+if(OHOS)
+  set(PNG_PNG_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/png/include/ohos)
+  set(PNG_LIBRARY
+          ${CMAKE_CURRENT_SOURCE_DIR}/external/png/prebuilt/ohos/libpng.a
+          )
+endif()
+cocos_find_package(PNG PNG REQUIRED)
+
+if(OHOS)
+  set(TIFF_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/tiff/include/ohos)
+  set(TIFF_LIBRARY
+          ${CMAKE_CURRENT_SOURCE_DIR}/external/tiff/prebuilt/ohos/libtiff.a
+          )
 endif()
 
-cocos_find_package(PNG PNG REQUIRED)
 cocos_find_package(TIFF TIFF REQUIRED)
+if(OHOS)
+  set(WEBSOCKETS_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/websockets/include/ohos)
+  set(WEBSOCKETS_LIBRARY
+      ${CMAKE_CURRENT_SOURCE_DIR}/external/websockets/prebuilt/ohos/libwebsockets.a
+      )
+endif()
 cocos_find_package(WEBSOCKETS WEBSOCKETS REQUIRED)
+# openssl for web
+if(OHOS)
+  set(OPENSSL_INCLUDE_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/openssl
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/openssl/include/ohos
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/openssl/include/ohos/openssl
+    )
+  set(OPENSSL_LIBRARY
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/openssl/prebuilt/ohos/libcrypto.a
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/openssl/prebuilt/ohos/libssl.a
+    )
+endif()
+cocos_find_package(OPENSSL OPENSSL REQUIRED)
+
+if(OHOS)
+  set(CURL_INCLUDE_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/curl
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/curl/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/curl/include/ohos
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/curl/include/ohos/curl
+    )
+  set(CURL_LIBRARY
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/curl/prebuilt/ohos/libcurl.a
+    )
+endif()
 cocos_find_package(CURL CURL REQUIRED)
 
 # flatbuffers (not prebuilded, exists as source)
@@ -279,12 +353,21 @@ if(LINUX OR APPLE)
 add_subdirectory(external/xxhash)
 endif()
 
+# build xxhash
+add_subdirectory(external/xxhash)
+set(XXHASH_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/external/xxhash)
+set(XXHASH_LIBRARIES xxhash)
+
+add_subdirectory(external/ohos-specific/pvmp3dec)
+add_subdirectory(external/ohos-specific/tremolo)
+
 # libcocos2d.a
 add_subdirectory(cocos)
 
 # build cpp tests
 if(BUILD_CPP_TESTS)
-  add_subdirectory(tests/cpp-empty-test)
+  message("=========BUILD_CPP_TESTS is on======")
+  # add_subdirectory(tests/cpp-empty-test)
   add_subdirectory(tests/cpp-tests)
 endif(BUILD_CPP_TESTS)
 
