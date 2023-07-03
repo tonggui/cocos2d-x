@@ -1,0 +1,40 @@
+{
+  "app": {
+    "compileSdkVersion": 9,
+    "compatibleSdkVersion": 9,
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default"
+      }
+    ],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "material": {
+          "certpath": "C:\\Users\\guitong\\.ohos\\config\\openharmony\\auto_ohos_default_proj.ohos_ohos.samples.luatest33.cer",
+          "storePassword": "0000001BA5D966E19F1614AF92A3CB718E0BD0844CE239666FFF9DF30E614531B2812E2DF1FB29E2F2A017",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B97BFB43943C3D36E34A2B5013E6D0A5AD4B68E7D7573172A23B736A15770672AABD70D84193D74",
+          "profile": "C:\\Users\\guitong\\.ohos\\config\\openharmony\\auto_ohos_default_proj.ohos_ohos.samples.luatest33.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\guitong\\.ohos\\config\\openharmony\\auto_ohos_default_proj.ohos_ohos.samples.luatest33.p12"
+        }
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

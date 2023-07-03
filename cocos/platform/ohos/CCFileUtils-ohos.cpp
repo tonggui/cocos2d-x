@@ -84,6 +84,7 @@ bool FileUtilsOhos::init()
 
 bool FileUtilsOhos::isFileExist(const std::string& filename) const
 {
+    OHOS_LOGW("=============FileUtilsOhos::isFileExist filename is %{public}s", filename.c_str());
 	if (isAbsolutePath(filename))
     {
         return isFileExistInternal(filename);

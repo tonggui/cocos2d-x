@@ -3,7 +3,7 @@ set(cocos_root ${Cocos2d-X_SOURCE_DIR})
 if(WINDOWS)
   add_definitions(-DLUASOCKET_INET_ATON -DLUASOCKET_INET_PTON)
 endif()
-
+message("cmakelist luabindings Cocos2d-X_SOURCE_DIR is ${Cocos2d-X_SOURCE_DIR}")
 include_directories(
   ${cocos_root}/external/lua/tolua
   ${cocos_root}/external/lua/lua
@@ -34,22 +34,27 @@ file(GLOB lua_cocos2d_source_files
     "${cocos_root}/external/lua/tolua/*.c"
     "${cocos_root}/external/xxtea/xxtea.cpp"
     )
+# if (NOT USE_LUAJIT)
+#     message("==========build lua, not luajit")
+#     file(GLOB lua_source_files "${cocos_root}/external/lua/lua/*.c")
+#     list(APPEND lua_cocos2d_source_files ${lua_source_files})
+# endif ()
 
-list(APPEND lua_cocos2d_source_files
-        ${cocos_root}/external/lua/luasocket/luasocket.c
-        ${cocos_root}/external/lua/luasocket/timeout.c
-        ${cocos_root}/external/lua/luasocket/buffer.c
-        ${cocos_root}/external/lua/luasocket/io.c
-        ${cocos_root}/external/lua/luasocket/auxiliar.c
-        ${cocos_root}/external/lua/luasocket/options.c
-        ${cocos_root}/external/lua/luasocket/inet.c
-        ${cocos_root}/external/lua/luasocket/except.c
-        ${cocos_root}/external/lua/luasocket/select.c
-        ${cocos_root}/external/lua/luasocket/tcp.c
-        ${cocos_root}/external/lua/luasocket/udp.c
-        ${cocos_root}/external/lua/luasocket/mime.c
-        ${cocos_root}/external/lua/luasocket/luasocket_scripts.c
-	)
+#list(APPEND lua_cocos2d_source_files
+#        ${cocos_root}/external/lua/luasocket/luasocket.c
+#        ${cocos_root}/external/lua/luasocket/timeout.c
+#        ${cocos_root}/external/lua/luasocket/buffer.c
+#        ${cocos_root}/external/lua/luasocket/io.c
+#        ${cocos_root}/external/lua/luasocket/auxiliar.c
+#        ${cocos_root}/external/lua/luasocket/options.c
+#        ${cocos_root}/external/lua/luasocket/inet.c
+#        ${cocos_root}/external/lua/luasocket/except.c
+#        ${cocos_root}/external/lua/luasocket/select.c
+#        ${cocos_root}/external/lua/luasocket/tcp.c
+#        ${cocos_root}/external/lua/luasocket/udp.c
+#        ${cocos_root}/external/lua/luasocket/mime.c
+#        ${cocos_root}/external/lua/luasocket/luasocket_scripts.c
+#	)
 
 if(WINDOWS)
     list(APPEND lua_cocos2d_source_files
@@ -70,6 +75,9 @@ elseif(UNIX)
         ${cocos_root}/external/lua/luasocket/unix.c
         ${cocos_root}/external/lua/luasocket/usocket.c
         )
+endif()
+if(OHOS)
+    add_definitions(-D_GNU_SOURCE)
 endif()
 
 set(lua_bindings_manual_files
@@ -136,6 +144,13 @@ set(lua_bindings_files ${lua_cocos2d_source_files} ${lua_bindings_manual_files} 
 
 add_library(luacocos2d ${lua_bindings_files})
 target_link_libraries(luacocos2d cocos2d)
+
+# if(USE_LUAJIT)
+#     add_subdirectory(../../../external/lua/luajit luajit_bin)
+#     target_link_libraries(luacocos2d luajit)
+#     # luajit比lua多一个头文件luajit.h，在../../../external/lua/luajit/src下，暂时没有用到
+# endif()
+
 set_target_properties(luacocos2d
     PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"

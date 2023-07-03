@@ -94,7 +94,9 @@ int lua_print(lua_State * luastate)
             t += "\t";
     }
     CCLOG("[LUA-print] %s", t.c_str());
-
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_OHOS)
+        OHOS_LOGD("[LUA-print] %{public}s", t.c_str());
+#endif
     return 0;
 }
     
@@ -136,7 +138,9 @@ int lua_release_print(lua_State * L)
             t += "\t";
     }
     log("[LUA-print] %s", t.c_str());
-    
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_OHOS)
+    OHOS_LOGD("[LUA-print] %{public}s", t.c_str());
+#endif
     return 0;
 }
 }
@@ -268,15 +272,18 @@ void LuaStack::removeScriptHandler(int nHandler)
 
 int LuaStack::executeString(const char *codes)
 {
+    OHOS_LOGW("=========CCLOG LuaStack::executeString ==============");
     luaL_loadstring(_state, codes);
     return executeFunction(0);
 }
 
 int LuaStack::executeScriptFile(const char* filename)
 {
+    OHOS_LOGW("=========CCLOG LuaStack::executeScriptFile filename is %{public}s ==============", filename);
     std::string code("require \"");
     code.append(filename);
     code.append("\"");
+    OHOS_LOGW("=========CCLOG LuaStack::executeScriptFile code is %{public}s ==============", code.c_str());
     return executeString(code.c_str());
 }
 
@@ -407,9 +414,11 @@ bool LuaStack::pushFunctionByHandler(int nHandler)
 
 int LuaStack::executeFunction(int numArgs)
 {
+    OHOS_LOGW("=========CCLOG LuaStack::executeFunction numArgs is %{public}d ==============", numArgs);
     int functionIndex = -(numArgs + 1);
     if (!lua_isfunction(_state, functionIndex))
     {
+        OHOS_LOGW("=========CCLOG LuaStack::executeFunction value at stack %{public}d  is not function ==============", functionIndex);
         CCLOG("value at stack [%d] is not function", functionIndex);
         lua_pop(_state, numArgs + 1); // remove function and arguments
         return 0;
@@ -419,10 +428,12 @@ int LuaStack::executeFunction(int numArgs)
     lua_getglobal(_state, "__G__TRACKBACK__");                         /* L: ... func arg1 arg2 ... G */
     if (!lua_isfunction(_state, -1))
     {
+        OHOS_LOGW("=========CCLOG LuaStack::executeFunction lua_isfunction==============");
         lua_pop(_state, 1);                                            /* L: ... func arg1 arg2 ... */
     }
     else
     {
+        OHOS_LOGW("=========CCLOG LuaStack::executeFunction lua_insert==============");
         lua_insert(_state, functionIndex - 1);                         /* L: ... G func arg1 arg2 ... */
         traceback = functionIndex - 1;
     }
@@ -431,10 +442,15 @@ int LuaStack::executeFunction(int numArgs)
     ++_callFromLua;
     error = lua_pcall(_state, numArgs, 1, traceback);                  /* L: ... [G] ret */
     --_callFromLua;
+    OHOS_LOGW("=========CCLOG LuaStack::executeFunction lua_pcall==============");
     if (error)
     {
+        OHOS_LOGW("=========CCLOG LuaStack::executeFunction traceback==============");
         if (traceback == 0)
         {
+            #if (CC_TARGET_PLATFORM == CC_PLATFORM_OHOS)
+            OHOS_LOGD("[LUA-print] %{public}s", lua_tostring(_state, - 1));
+            #endif
             CCLOG("[LUA ERROR] %s", lua_tostring(_state, - 1));        /* L: ... error */
             lua_pop(_state, 1); // remove error message from stack
         }
@@ -747,7 +763,7 @@ int LuaStack::luaLoadChunksFromZIP(lua_State *L)
         CCLOG("luaLoadChunksFromZIP() - invalid arguments");
         return 0;
     }
-    
+    OHOS_LOGW("==============LuaStack::luaLoadChunksFromZIP");
     const char *zipFilename = lua_tostring(L, -1);
     lua_settop(L, 0);
     FileUtils *utils = FileUtils::getInstance();

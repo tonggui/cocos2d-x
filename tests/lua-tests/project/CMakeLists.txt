@@ -6,7 +6,19 @@ set(SAMPLE_SRC
     Classes/lua_test_bindings.cpp
 )
 
-if(LINUX)
+if(OHOS)
+    set(SAMPLE_SRC ${SAMPLE_SRC} proj.ohos/entry/src/main/cpp/main.cpp)
+    file(GLOB resFiles "${CMAKE_CURRENT_LIST_DIR}/../res/*")
+    file(COPY ${resFiles} DESTINATION ${CMAKE_CURRENT_LIST_DIR}/proj.ohos/entry/src/main/resources/rawfile/res)
+    file(GLOB srcFiles "${CMAKE_CURRENT_LIST_DIR}/../src/*")
+    file(COPY ${srcFiles} DESTINATION ${CMAKE_CURRENT_LIST_DIR}/proj.ohos/entry/src/main/resources/rawfile/src)
+    file(GLOB testResource ${COCOS2DX_ROOT_PATH}/tests/cpp-tests/Resources/*)
+    file(COPY ${testResource} DESTINATION ${CMAKE_CURRENT_LIST_DIR}/proj.ohos/entry/src/main/resources/rawfile)
+    if(NOT EXISTS ${CMAKE_CURRENT_LIST_DIR}/proj.ohos/entry/src/main/resources/rawfile/cocos)
+        file(GLOB cocosFiles "${COCOS2DX_ROOT_PATH}/cocos/scripting/lua-bindings/script/*")
+        file(COPY ${cocosFiles} DESTINATION ${CMAKE_CURRENT_LIST_DIR}/proj.ohos/entry/src/main/resources/rawfile/cocos)
+    endif()
+elseif(LINUX)
     set(SAMPLE_SRC ${SAMPLE_SRC} proj.linux/main.cpp)
     set(RES_PREFIX "/Resources")
 elseif(WINDOWS)
@@ -28,17 +40,40 @@ elseif(MACOSX)
 endif()
 
 include_directories(
-  Classes
+    Classes
   ../../../cocos/scripting/lua-bindings/manual
   ../../../cocos/scripting/lua-bindings/auto
   ../../../external/lua/lua
   ../../../external/lua/tolua
 )
 
-# add the executable
-add_executable(${APP_NAME} ${SAMPLE_SRC})
+if (OHOS)
+    message("========LUA-TESTS OHOS")
+    set(APP_SRC ${SAMPLE_HEADER} ${SAMPLE_SRC})
+    add_library(${APP_NAME} STATIC ${APP_SRC})
 
-target_link_libraries(${APP_NAME} luacocos2d cocos2d)
+    include_directories(
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        
+        ${COCOS2DX_ROOT_PATH}
+        ${COCOS2DX_ROOT_PATH}/external
+        ${COCOS2DX_ROOT_PATH}/external/chipmunk
+        ${COCOS2DX_ROOT_PATH}/external/chipmunk/include/chipmunk
+        ${COCOS2DX_ROOT_PATH}/external/lib
+        ${COCOS2DX_ROOT_PATH}/external/Box2D
+        ${COCOS2DX_ROOT_PATH}/external/tiff
+        ${COCOS2DX_ROOT_PATH}/external/tiff/include/ohos
+        ${COCOS2DX_ROOT_PATH}/cocos
+        ${COCOS2DX_ROOT_PATH}/cocos/editor-support
+        ${COCOS2DX_ROOT_PATH}/extensions
+    )
+    add_subdirectory(${COCOS2DX_ROOT_PATH} Cocos2d-X)
+else()
+    # add the executable
+    add_executable(${APP_NAME} ${SAMPLE_SRC})
+    
+    target_link_libraries(${APP_NAME} luacocos2d cocos2d)
+endif ()
 
 if(MACOSX OR APPLE)
   set_target_properties(${APP_NAME} PROPERTIES
@@ -46,7 +81,7 @@ if(MACOSX OR APPLE)
       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
       )
 
-else()
+elseif(!OHOS)
 
     set(APP_BIN_DIR "${CMAKE_BINARY_DIR}/bin/${APP_NAME}")
 

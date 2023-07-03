@@ -51,8 +51,8 @@ if(MINGW)
 endif()
 
 set(BUILD_CPP_TESTS_DEFAULT OFF)
-set(BUILD_LUA_LIBS_DEFAULT OFF)
-set(BUILD_LUA_TESTS_DEFAULT OFF)
+set(BUILD_LUA_LIBS_DEFAULT ON)
+set(BUILD_LUA_TESTS_DEFAULT ON)
 # TODO: fix test samples for MSVC
 if(MSVC)
   set(BUILD_CPP_TESTS_DEFAULT OFF)
@@ -102,7 +102,7 @@ else()
   endif()
 endif(MSVC)
 
-set(COCOS_EXTERNAL_DIR ${CMAKE_CURRENT_LIST_DIR}/external)
+set(COCOS_EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 
 # Some macro definitions
 if(WINDOWS)
@@ -210,10 +210,11 @@ endif(USE_WEBP)
 
 # Chipmunk
 if(USE_CHIPMUNK)
-  if(OHOS)
-    set(CHIPMUNK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/chipmunk/include/chipmunk)
-    set(CHIPMUNK_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/external/chipmunk/prebuilt/ohos/libchipmunk.a)
-  endif()
+ if(OHOS)
+   set(CHIPMUNK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/chipmunk/include/chipmunk)
+   message(STATUS "USE_CHIPMUNK OHOS: ${CHIPMUNK_INCLUDE_DIR}")
+   set(CHIPMUNK_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/external/chipmunk/prebuilt/ohos/libchipmunk.a)
+ endif()
   cocos_find_package(Chipmunk CHIPMUNK REQUIRED)
   add_definitions(-DCC_ENABLE_CHIPMUNK_INTEGRATION=1)
   if(IOS OR MACOSX)
@@ -337,9 +338,10 @@ cocos_find_package(CURL CURL REQUIRED)
 # and source file not provided. So these files can be
 # compiled only with our in-source version of flatbuffers
 ## if(USE_PREBUILT_LIBS)
-  add_subdirectory(external/flatbuffers)
-  set(FLATBUFFERS_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/external)
-  set(FLATBUFFERS_LIBRARIES flatbuffers)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/flatbuffers)
+message("===========Flatbuffers libs: ${FLATBUFFERS_LIBRARIES}")
+set(FLATBUFFERS_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/external)
+set(FLATBUFFERS_LIBRARIES flatbuffers)
 ## else()
 ##  cocos_find_package(Flatbuffers REQUIRED FLATBUFFERS_LIBRARIES)
 ##  set(FLATBUFFERS_INCLUDE_DIRS ${FLATBUFFERS_INCLUDE_DIRS})
@@ -376,9 +378,9 @@ if(BUILD_LUA_LIBS)
     add_subdirectory(cocos/scripting/lua-bindings)
 
   # build lua tests
-  if(BUILD_LUA_TESTS)
-    add_subdirectory(tests/lua-tests/project)
-    add_subdirectory(tests/lua-empty-test/project)
-  endif(BUILD_LUA_TESTS)
+#  if(BUILD_LUA_TESTS)
+#    add_subdirectory(tests/lua-tests/project)
+#    add_subdirectory(tests/lua-empty-test/project)
+#  endif(BUILD_LUA_TESTS)
 
 endif(BUILD_LUA_LIBS)

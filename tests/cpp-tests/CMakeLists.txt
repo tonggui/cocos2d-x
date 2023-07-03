@@ -334,13 +334,9 @@ if(OHOS)
     # target_link_libraries(${PROJECT_NAME} PUBLIC libace_napi.z.so extensions)
     # add_subdirectory(${COCOS2DX_ROOT_PATH}/extensions)
 else(OHOS)
-    add_executable(${APP_NAME}
-      ${TESTS_SRC}
-      ${EXTENDED_TESTS_SRC}
+    add_executable(${APP_NAME} ${TESTS_SRC} ${EXTENDED_TESTS_SRC}
     )
-    target_link_libraries(${APP_NAME}
-      cocos2d
-    )
+    target_link_libraries(${APP_NAME} cocos2d )
 endif(OHOS)
 
 # cocos_use_pkg(${APP_NAME} CURL)

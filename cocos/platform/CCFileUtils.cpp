@@ -914,11 +914,17 @@ std::string FileUtils::getFullPathForDirectoryAndFilename(const std::string& dir
         ret += '/';
     }
     ret += filename;
-    
+
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_OHOS)
+    if (!isFileExistInternal(ret) && !isDirectoryExistInternal(ret)) {
+        ret = "";
+    }
+#else
     // if the file doesn't exist, return an empty string
     if (!isFileExistInternal(ret)) {
         ret = "";
     }
+#endif
     return ret;
 }
 
